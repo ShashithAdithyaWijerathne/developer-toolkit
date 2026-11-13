@@ -98,5 +98,68 @@ class CliTests(unittest.TestCase):
         self.assertEqual(result.stderr, "")
 
 
+
+class ChecksumVerificationTests(unittest.TestCase):
+    def run_cli(self, path, *arguments):
+        return subprocess.run(
+            [sys.executable, str(ROOT / "toolkit.py"), "sha256", str(path),
+             *arguments],
+            capture_output=True, text=True, timeout=10,
+        )
+
+    def test_match_accepts_lowercase_and_uppercase_digest(self):
+        # Published SHA-256 test vector for ASCII "abc".
+        expected = "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "input with spaces.bin"
+            path.write_bytes(b"abc")
+            for digest in (expected, expected.upper()):
+                with self.subTest(digest=digest):
+                    result = self.run_cli(path, "--expect", digest)
+                    self.assertEqual(result.returncode, 0)
+                    self.assertEqual(result.stdout, expected + "\n")
+                    self.assertEqual(result.stderr, "")
+            self.assertEqual(path.read_bytes(), b"abc")
+
+    def test_mismatch_fails_without_success_output(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "input.bin"
+            path.write_bytes(b"abc")
+            result = self.run_cli(path, "--expect", "0" * 64)
+            self.assertEqual(result.returncode, 1)
+            self.assertEqual(result.stdout, "")
+            self.assertIn("SHA-256 mismatch", result.stderr)
+            self.assertEqual(path.read_bytes(), b"abc")
+
+    def test_malformed_digest_is_rejected_before_opening_file(self):
+        with tempfile.TemporaryDirectory() as directory:
+            missing = Path(directory) / "missing.bin"
+            for digest in ("", "a" * 63, "a" * 65, "g" * 64,
+                           " " + "a" * 64, "a" * 64 + "\n", "Ａ" * 64):
+                with self.subTest(digest=digest):
+                    result = self.run_cli(missing, "--expect", digest)
+                    self.assertEqual(result.returncode, 2)
+                    self.assertEqual(result.stdout, "")
+                    self.assertIn("64 hexadecimal characters", result.stderr)
+                    self.assertNotIn("No such file", result.stderr)
+
+    def test_verification_missing_file_keeps_error_exit(self):
+        with tempfile.TemporaryDirectory() as directory:
+            result = self.run_cli(Path(directory) / "missing", "--expect", "0" * 64)
+            self.assertEqual(result.returncode, 1)
+            self.assertEqual(result.stdout, "")
+            self.assertIn("error:", result.stderr)
+            self.assertNotIn("SHA-256 mismatch", result.stderr)
+
+    def test_default_checksum_output_is_unchanged(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "empty.bin"
+            path.write_bytes(b"")
+            result = self.run_cli(path)
+            self.assertEqual(result.returncode, 0)
+            self.assertEqual(result.stdout, hashlib.sha256(b"").hexdigest() + "\n")
+            self.assertEqual(result.stderr, "")
+
+
 if __name__ == "__main__":
     unittest.main()

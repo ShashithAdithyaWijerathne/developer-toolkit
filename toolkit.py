@@ -3,6 +3,7 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
+import re
 import sys
 
 
@@ -36,6 +37,15 @@ def sha256_file(path):
     return digest.hexdigest()
 
 
+def parse_sha256_digest(value):
+    """Validate an expected digest before any file is opened."""
+    if re.fullmatch(r"[0-9a-fA-F]{64}", value) is None:
+        raise argparse.ArgumentTypeError(
+            "expected SHA-256 must contain exactly 64 hexadecimal characters"
+        )
+    return value.lower()
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -45,6 +55,8 @@ def main(argv=None):
     json_command.add_argument("--sort-keys", action="store_true")
     hash_command = commands.add_parser("sha256", help="Calculate a file checksum")
     hash_command.add_argument("file")
+    hash_command.add_argument("--expect", type=parse_sha256_digest, metavar="DIGEST",
+                              help="Fail unless the file matches this SHA-256 digest")
     args = parser.parse_args(argv)
 
     try:
@@ -54,7 +66,11 @@ def main(argv=None):
             output = format_json(text, sort_keys=args.sort_keys)
             sys.stdout.write(output)
         else:
-            print(sha256_file(args.file))
+            digest = sha256_file(args.file)
+            if args.expect is not None and digest != args.expect:
+                raise ValueError("SHA-256 mismatch: expected " + args.expect
+                                 + ", got " + digest)
+            print(digest)
     except (OSError, UnicodeError, ValueError, RecursionError) as error:
         print("error: " + str(error), file=sys.stderr)
         return 1
