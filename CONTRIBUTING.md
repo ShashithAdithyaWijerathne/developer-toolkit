@@ -12,6 +12,7 @@ Search existing issues first. Include the command, a minimal non-sensitive input
 2. Implement a focused improvement and add regression coverage where behaviour changes.
 3. Run `python -m unittest discover -s tests -v`.
 4. Open a pull request explaining the problem, resulting behaviour and checks run.
+5. Wait for all six Python tests jobs to pass before merging. If a run is awaiting maintainer approval, leave the PR open until that approval is available.
 
 Review the diff for accidental files and unnecessary dependencies. State any validation limits. AI-assisted changes should be identified as such; an author's self-review is not independent approval.
 

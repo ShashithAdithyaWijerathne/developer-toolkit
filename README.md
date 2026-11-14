@@ -72,6 +72,12 @@ python -m unittest discover -s tests -v
 
 Coverage includes malformed JSON, duplicate keys, Unicode, optional sorting, BOM input, invalid encoding, known and multi-chunk checksums, stdin, error exits, quiet imports, checksum matches/mismatches, uppercase digests and malformed expected digests.
 
+## Continuous integration
+
+[Python tests](https://github.com/ShashithAdithyaWijerathne/developer-toolkit/actions/workflows/tests.yml) runs the regression suite and CLI help on Linux, Windows and macOS with Python 3.10 and 3.14. The matrix exercises the documented minimum version and a newer stable version; it does not test every intermediate Python release.
+
+Checks run on pull requests to `main`, pushes to `main`, and manual dispatch. Jobs use UTF-8 mode consistently for Unicode input/output tests, a read-only repository token, and commit-pinned checkout/setup actions. No dependency installation or secrets are required. Workflow checks do not enforce merge blocking unless repository protection rules require them.
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for reproduction steps, validation expectations and co-author attribution.
