@@ -34,7 +34,7 @@ Omit the file argument or use `-` to read from standard input. Output goes to st
 python toolkit.py json payload.json > formatted.json
 ```
 
-JSON files are decoded as UTF-8, with an optional byte-order mark. Duplicate object keys, NaN, Infinity, malformed JSON and numbers that overflow the supported float representation are rejected. Unicode text is preserved. For exact decimal arithmetic, use an application-specific decimal parser; this formatter uses Python's standard JSON number handling.
+JSON files are decoded as UTF-8, with an optional byte-order mark. Standard input also accepts one leading Unicode byte-order mark, so piping the same UTF-8 file produces the same result as passing its path. BOM characters inside JSON string values are preserved. Duplicate object keys, NaN, Infinity, malformed JSON and numbers that overflow the supported float representation are rejected. Unicode text is preserved. For exact decimal arithmetic, use an application-specific decimal parser; this formatter uses Python's standard JSON number handling.
 
 ### Calculate a checksum
 

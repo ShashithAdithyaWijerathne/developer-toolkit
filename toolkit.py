@@ -61,7 +61,7 @@ def main(argv=None):
 
     try:
         if args.command == "json":
-            text = (sys.stdin.read() if args.file == "-"
+            text = (sys.stdin.read().removeprefix("\ufeff") if args.file == "-"
                     else Path(args.file).read_text(encoding="utf-8-sig"))
             output = format_json(text, sort_keys=args.sort_keys)
             sys.stdout.write(output)
