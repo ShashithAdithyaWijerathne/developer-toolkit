@@ -161,5 +161,49 @@ class ChecksumVerificationTests(unittest.TestCase):
             self.assertEqual(result.stderr, "")
 
 
+
+class StdinBomTests(unittest.TestCase):
+    def run_json(self, payload, *arguments):
+        return subprocess.run(
+            [sys.executable, "-X", "utf8", str(ROOT / "toolkit.py"), "json",
+             *arguments],
+            input=payload, capture_output=True, timeout=10,
+        )
+
+    def test_bom_stdin_matches_file_input(self):
+        payload = b'\xef\xbb\xbf{"ok":true}'
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "bom.json"
+            path.write_bytes(payload)
+            from_file = self.run_json(None, str(path))
+            self.assertEqual(from_file.returncode, 0)
+            for arguments in ((), ("-",)):
+                with self.subTest(arguments=arguments):
+                    result = self.run_json(payload, *arguments)
+                    self.assertEqual(result.returncode, 0)
+                    self.assertEqual(result.stdout, from_file.stdout)
+                    self.assertEqual(result.stderr, b"")
+
+    def test_bom_unicode_and_sorting_preserve_content(self):
+        payload = '\ufeff{"z":"පොල්","a":"\\ufeffkept"}'.encode("utf-8")
+        result = self.run_json(payload, "-", "--sort-keys")
+        self.assertEqual(result.returncode, 0)
+        import json
+        parsed = json.loads(result.stdout)
+        self.assertEqual(parsed, {"z": "පොල්", "a": "\ufeffkept"})
+        self.assertLess(result.stdout.index(b'"a"'), result.stdout.index(b'"z"'))
+        self.assertEqual(result.stderr, b"")
+
+    def test_bom_does_not_hide_invalid_json(self):
+        for payload in (b"\xef\xbb\xbf", b'\xef\xbb\xbf{"x":}',
+                        b'\xef\xbb\xbf{"x":1,"x":2}',
+                        b'\xef\xbb\xbf\xef\xbb\xbf{}'):
+            with self.subTest(payload=payload):
+                result = self.run_json(payload)
+                self.assertEqual(result.returncode, 1)
+                self.assertEqual(result.stdout, b"")
+                self.assertIn(b"error:", result.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()
