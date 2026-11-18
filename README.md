@@ -34,7 +34,7 @@ Omit the file argument or use `-` to read from standard input. Output goes to st
 python toolkit.py json payload.json > formatted.json
 ```
 
-JSON files are decoded as UTF-8, with an optional byte-order mark. Standard input also accepts one leading Unicode byte-order mark, so piping the same UTF-8 file produces the same result as passing its path. BOM characters inside JSON string values are preserved. Duplicate object keys, NaN, Infinity, malformed JSON and numbers that overflow the supported float representation are rejected. Unicode text is preserved. For exact decimal arithmetic, use an application-specific decimal parser; this formatter uses Python's standard JSON number handling.
+JSON files are decoded as UTF-8, with an optional byte-order mark. Byte input from standard input is also decoded strictly as UTF-8, independently of the system's standard-stream encoding, and accepts one leading byte-order mark. Piping the same UTF-8 file therefore produces the same result as passing its path. Invalid UTF-8 is rejected before any formatted output is written. BOM characters inside JSON string values are preserved. Duplicate object keys, NaN, Infinity, malformed JSON and numbers that overflow the supported float representation are rejected. Unicode text is preserved. Output uses Python's configured stdout encoding; use UTF-8 mode (`python -X utf8 toolkit.py json payload.json`) when the destination must contain UTF-8 bytes. For exact decimal arithmetic, use an application-specific decimal parser; this formatter uses Python's standard JSON number handling.
 
 ### Calculate a checksum
 
@@ -70,7 +70,7 @@ Run from the repository root:
 python -m unittest discover -s tests -v
 ```
 
-Coverage includes malformed JSON, duplicate keys, Unicode, optional sorting, BOM input, invalid encoding, known and multi-chunk checksums, stdin, error exits, quiet imports, checksum matches/mismatches, uppercase digests and malformed expected digests.
+Coverage includes malformed JSON, duplicate keys, Unicode, optional sorting, BOM input, legacy standard-stream encodings, invalid encoding, known and multi-chunk checksums, stdin, error exits, quiet imports, checksum matches/mismatches, uppercase digests and malformed expected digests.
 
 ## Continuous integration
 

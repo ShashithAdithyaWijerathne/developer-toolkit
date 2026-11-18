@@ -205,5 +205,47 @@ class StdinBomTests(unittest.TestCase):
                 self.assertIn(b"error:", result.stderr)
 
 
+
+class StdinEncodingTests(unittest.TestCase):
+    def run_with_legacy_stream_encoding(self, payload, *arguments):
+        import os
+        return subprocess.run(
+            [sys.executable, str(ROOT / "toolkit.py"), "json", *arguments],
+            input=payload, capture_output=True, timeout=10,
+            env={**os.environ, "PYTHONIOENCODING": "cp1252:strict"},
+        )
+
+    def test_utf8_pipe_matches_file_under_legacy_stream_encoding(self):
+        import json
+        for prefix in (b"", b"\xef\xbb\xbf"):
+            payload = prefix + '{"name":"café"}'.encode("utf-8")
+            with self.subTest(bom=bool(prefix)), tempfile.TemporaryDirectory() as directory:
+                path = Path(directory) / "sample.json"
+                path.write_bytes(payload)
+                from_file = self.run_with_legacy_stream_encoding(None, str(path))
+                self.assertEqual(from_file.returncode, 0)
+                for arguments in ((), ("-",)):
+                    result = self.run_with_legacy_stream_encoding(payload, *arguments)
+                    self.assertEqual(result.returncode, 0)
+                    self.assertEqual(result.stdout, from_file.stdout)
+                    self.assertEqual(json.loads(result.stdout.decode("cp1252")),
+                                     {"name": "café"})
+                    self.assertEqual(result.stderr, b"")
+
+    def test_invalid_utf8_stdin_is_rejected_without_output(self):
+        result = self.run_with_legacy_stream_encoding(b'{"name":"\xff"}')
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual(result.stdout, b"")
+        self.assertIn(b"error:", result.stderr)
+        self.assertNotIn(b"Traceback", result.stderr)
+
+    def test_text_only_stdin_remains_supported(self):
+        from unittest.mock import patch
+        output = io.StringIO()
+        with patch("sys.stdin", io.StringIO('\ufeff{"name":"පොල්"}')):
+            with contextlib.redirect_stdout(output):
+                self.assertEqual(main(["json"]), 0)
+        self.assertIn("පොල්", output.getvalue())
+
 if __name__ == "__main__":
     unittest.main()

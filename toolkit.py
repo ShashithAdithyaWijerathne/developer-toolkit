@@ -46,6 +46,15 @@ def parse_sha256_digest(value):
     return value.lower()
 
 
+def read_json_stdin():
+    """Decode byte stdin as strict UTF-8, independent of the stream locale."""
+    binary = getattr(sys.stdin, "buffer", None)
+    if binary is not None:
+        return binary.read().decode("utf-8-sig")
+    # Embedded callers may replace stdin with an already decoded text stream.
+    return sys.stdin.read().removeprefix("\ufeff")
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -61,7 +70,7 @@ def main(argv=None):
 
     try:
         if args.command == "json":
-            text = (sys.stdin.read().removeprefix("\ufeff") if args.file == "-"
+            text = (read_json_stdin() if args.file == "-"
                     else Path(args.file).read_text(encoding="utf-8-sig"))
             output = format_json(text, sort_keys=args.sort_keys)
             sys.stdout.write(output)
