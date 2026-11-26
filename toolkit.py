@@ -62,6 +62,8 @@ def main(argv=None):
     json_command.add_argument("file", nargs="?", default="-",
                               help="UTF-8 JSON file, or - for stdin")
     json_command.add_argument("--sort-keys", action="store_true")
+    json_command.add_argument("--check", action="store_true",
+                              help="Validate JSON without writing formatted output")
     hash_command = commands.add_parser("sha256", help="Calculate a file checksum")
     hash_command.add_argument("file")
     hash_command.add_argument("--expect", type=parse_sha256_digest, metavar="DIGEST",
@@ -73,7 +75,8 @@ def main(argv=None):
             text = (read_json_stdin() if args.file == "-"
                     else Path(args.file).read_text(encoding="utf-8-sig"))
             output = format_json(text, sort_keys=args.sort_keys)
-            sys.stdout.write(output)
+            if not args.check:
+                sys.stdout.write(output)
         else:
             digest = sha256_file(args.file)
             if args.expect is not None and digest != args.expect:
