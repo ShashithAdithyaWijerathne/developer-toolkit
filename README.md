@@ -36,6 +36,19 @@ python toolkit.py json payload.json > formatted.json
 
 JSON files are decoded as UTF-8, with an optional byte-order mark. Byte input from standard input is also decoded strictly as UTF-8, independently of the system's standard-stream encoding, and accepts one leading byte-order mark. Piping the same UTF-8 file therefore produces the same result as passing its path. Invalid UTF-8 is rejected before any formatted output is written. BOM characters inside JSON string values are preserved. Duplicate object keys, NaN, Infinity, malformed JSON and numbers that overflow the supported float representation are rejected. Unicode text is preserved. Output uses Python's configured stdout encoding; use UTF-8 mode (`python -X utf8 toolkit.py json payload.json`) when the destination must contain UTF-8 bytes. For exact decimal arithmetic, use an application-specific decimal parser; this formatter uses Python's standard JSON number handling.
 
+### Validate JSON without output
+
+Use `--check` in scripts or CI when you only need a validation result:
+
+```sh
+python toolkit.py json payload.json --check
+python toolkit.py json - --check
+```
+
+Valid input exits with `0` and writes nothing to stdout or stderr. Invalid JSON, invalid UTF-8 and unreadable files keep exit code `1` with an error on stderr and no stdout. The input is never modified. File/stdin BOM handling and all strict validation rules above also apply in check mode, including rejection of duplicate keys, non-standard constants and float overflow. Unicode validation works even when stdout cannot encode the input text because nothing is written to it.
+
+`--sort-keys` may be combined with `--check`, but produces no output. Check mode still parses and formats the document internally using the existing validation path; it is not a streaming or constant-memory JSON validator.
+
 ### Calculate a checksum
 
 ```sh
@@ -70,7 +83,7 @@ Run from the repository root:
 python -m unittest discover -s tests -v
 ```
 
-Coverage includes malformed JSON, duplicate keys, Unicode, optional sorting, BOM input, legacy standard-stream encodings, invalid encoding, known and multi-chunk checksums, stdin, error exits, quiet imports, checksum matches/mismatches, uppercase digests and malformed expected digests.
+Coverage includes malformed JSON, duplicate keys, Unicode, optional sorting, BOM input, legacy standard-stream encodings, invalid encoding, known and multi-chunk checksums, stdin, error exits, quiet imports, checksum matches/mismatches, uppercase digests and malformed expected digests, and silent JSON check-mode success/error behavior.
 
 ## Continuous integration
 

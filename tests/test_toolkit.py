@@ -247,5 +247,53 @@ class StdinEncodingTests(unittest.TestCase):
                 self.assertEqual(main(["json"]), 0)
         self.assertIn("පොල්", output.getvalue())
 
+
+class JsonCheckTests(unittest.TestCase):
+    def run_check(self, payload, *arguments):
+        import os
+        return subprocess.run(
+            [sys.executable, str(ROOT / "toolkit.py"), "json", *arguments, "--check"],
+            input=payload, capture_output=True, timeout=10,
+            env={**os.environ, "PYTHONIOENCODING": "ascii:strict"},
+        )
+
+    def test_valid_unicode_stdin_is_silent_even_with_ascii_stdout(self):
+        payload = '\ufeff{"name":"පොල්","items":[true,null,2]}'.encode("utf-8")
+        for arguments in ((), ("-",), ("-", "--sort-keys")):
+            with self.subTest(arguments=arguments):
+                result = self.run_check(payload, *arguments)
+                self.assertEqual(result.returncode, 0)
+                self.assertEqual(result.stdout, b"")
+                self.assertEqual(result.stderr, b"")
+
+    def test_file_is_validated_without_modifying_it(self):
+        payload = b'\xef\xbb\xbf{"z":1,"a":2}'
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "input with spaces.json"
+            path.write_bytes(payload)
+            result = self.run_check(None, str(path))
+            self.assertEqual(result.returncode, 0)
+            self.assertEqual(result.stdout, b"")
+            self.assertEqual(result.stderr, b"")
+            self.assertEqual(path.read_bytes(), payload)
+
+    def test_invalid_inputs_keep_error_exit_without_output(self):
+        for payload in (b"{", b'{"x":1,"x":2}', b"NaN",
+                        b'{"x":[1e999]}', b'{"x":"\xff"}',
+                        b'\xef\xbb\xbf\xef\xbb\xbf{}'):
+            with self.subTest(payload=payload):
+                result = self.run_check(payload)
+                self.assertEqual(result.returncode, 1)
+                self.assertEqual(result.stdout, b"")
+                self.assertIn(b"error:", result.stderr)
+                self.assertNotIn(b"Traceback", result.stderr)
+
+    def test_missing_file_keeps_error_exit(self):
+        with tempfile.TemporaryDirectory() as directory:
+            result = self.run_check(None, str(Path(directory) / "missing.json"))
+            self.assertEqual(result.returncode, 1)
+            self.assertEqual(result.stdout, b"")
+            self.assertIn(b"error:", result.stderr)
+
 if __name__ == "__main__":
     unittest.main()
