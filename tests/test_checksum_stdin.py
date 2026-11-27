@@ -31,7 +31,7 @@ class ChecksumStdinTests(unittest.TestCase):
                 result = self.run_cli(payload)
                 expected = hashlib.sha256(payload).hexdigest()
                 self.assertEqual(result.returncode, 0, result.stderr)
-                self.assertEqual(result.stdout, (expected + "\n").encode("ascii"))
+                self.assertEqual(result.stdout.decode("ascii").splitlines(), [expected])
                 self.assertEqual(result.stderr, b"")
                 self.assertEqual(toolkit.sha256_file(path), expected)
 
@@ -42,7 +42,7 @@ class ChecksumStdinTests(unittest.TestCase):
             with self.subTest(digest=digest):
                 result = self.run_cli(payload, "--expect", digest)
                 self.assertEqual(result.returncode, 0, result.stderr)
-                self.assertEqual(result.stdout, (expected + "\n").encode("ascii"))
+                self.assertEqual(result.stdout.decode("ascii").splitlines(), [expected])
                 self.assertEqual(result.stderr, b"")
         mismatch = self.run_cli(payload, "--expect", "0" * 64)
         self.assertEqual(mismatch.returncode, 1)
