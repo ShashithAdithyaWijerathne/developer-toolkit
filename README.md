@@ -7,7 +7,7 @@ Small, dependency-free command-line utilities for everyday development. Written 
 | Command | Purpose |
 | --- | --- |
 | `json` | Validate JSON and format it with two-space indentation |
-| `sha256` | Calculate or verify a file's SHA-256 checksum using bounded memory |
+| `sha256` | Calculate or verify SHA-256 for a file or binary stdin using bounded memory |
 
 ## Getting started
 
@@ -69,6 +69,19 @@ Replace the placeholder with the actual digest. A match prints the computed lowe
 
 Expected digests must contain exactly 64 hexadecimal characters; uppercase is accepted. Malformed digests exit with `2` before reading the file. Neither calculation nor verification modifies the input file.
 
+### Hash a binary pipeline
+
+Use an explicit `-` instead of a filename to calculate or verify the bytes arriving on stdin:
+
+```sh
+python -c "import sys; sys.stdout.buffer.write(b'abc')" | python toolkit.py sha256 -
+python -c "import sys; sys.stdout.buffer.write(b'abc')" | python toolkit.py sha256 - --expect ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
+```
+
+Both commands print the SHA-256 digest of `abc`. The utility hashes bytes without text decoding, newline conversion or re-encoding, using 1 MiB reads for stdin as well as files. It does not close stdin. Ensure the producing command and shell preserve the intended bytes; text pipelines and older shells may transform data before it reaches Python. For an existing file, passing its path avoids these upstream transformations.
+
+The file-or-dash argument remains required. Use `./-` to hash a file literally named `-`. Matching, mismatching, malformed-digest and read-error exit codes are the same for files and stdin. Embedded callers must supply a stdin with a binary `buffer`; a text-only replacement is rejected rather than guessed or re-encoded. Python callers may use `sha256_stream(binary_source)` to hash from the source's current position, without closing it.
+
 ## Exit codes
 
 - `0`: successful operation.
@@ -85,6 +98,8 @@ python -m unittest discover -s tests -v
 
 Coverage includes malformed JSON, duplicate keys, Unicode, optional sorting, BOM input, legacy standard-stream encodings, invalid encoding, known and multi-chunk checksums, stdin, error exits, quiet imports, checksum matches/mismatches, uppercase digests and malformed expected digests, and silent JSON check-mode success/error behavior.
 
+Checksum stream tests also cover empty and arbitrary binary stdin, file/pipe parity, bounded reads, stream ownership, read failures, text-only stdin rejection and literal dash filenames.
+
 ## Continuous integration
 
 [Python tests](https://github.com/ShashithAdithyaWijerathne/developer-toolkit/actions/workflows/tests.yml) runs the regression suite and CLI help on Linux, Windows and macOS with Python 3.10 and 3.14. The matrix exercises the documented minimum version and a newer stable version; it does not test every intermediate Python release.
@@ -94,3 +109,5 @@ Checks run on pull requests to `main`, pushes to `main`, and manual dispatch. Jo
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for reproduction steps, validation expectations and co-author attribution.
+
+See [BACKLOG.md](BACKLOG.md) for the small prioritized development backlog and acceptance criteria.
