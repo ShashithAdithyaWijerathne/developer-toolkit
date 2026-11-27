@@ -28,13 +28,18 @@ def format_json(text, sort_keys=False):
                       sort_keys=sort_keys, allow_nan=False) + "\n"
 
 
+def sha256_stream(source):
+    """Hash a binary stream from its current position without closing it."""
+    digest = hashlib.sha256()
+    for chunk in iter(lambda: source.read(1024 * 1024), b""):
+        digest.update(chunk)
+    return digest.hexdigest()
+
+
 def sha256_file(path):
     """Hash a file without loading its entire contents into memory."""
-    digest = hashlib.sha256()
     with Path(path).open("rb") as source:
-        for chunk in iter(lambda: source.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+        return sha256_stream(source)
 
 
 def parse_sha256_digest(value):
@@ -65,9 +70,9 @@ def main(argv=None):
     json_command.add_argument("--check", action="store_true",
                               help="Validate JSON without writing formatted output")
     hash_command = commands.add_parser("sha256", help="Calculate a file checksum")
-    hash_command.add_argument("file")
+    hash_command.add_argument("file", help="file to hash, or - for binary stdin")
     hash_command.add_argument("--expect", type=parse_sha256_digest, metavar="DIGEST",
-                              help="Fail unless the file matches this SHA-256 digest")
+                              help="Fail unless the input matches this SHA-256 digest")
     args = parser.parse_args(argv)
 
     try:
@@ -78,7 +83,13 @@ def main(argv=None):
             if not args.check:
                 sys.stdout.write(output)
         else:
-            digest = sha256_file(args.file)
+            if args.file == "-":
+                source = getattr(sys.stdin, "buffer", None)
+                if source is None:
+                    raise ValueError("SHA-256 stdin requires a binary input stream")
+                digest = sha256_stream(source)
+            else:
+                digest = sha256_file(args.file)
             if args.expect is not None and digest != args.expect:
                 raise ValueError("SHA-256 mismatch: expected " + args.expect
                                  + ", got " + digest)
