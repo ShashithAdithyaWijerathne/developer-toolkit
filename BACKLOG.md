@@ -2,11 +2,15 @@
 
 Keep this list ordered by concrete user value. Recheck current code and existing issues before starting a task; entries are not a daily activity quota.
 
-## Next: opt-in ASCII JSON output
+## Next: readable duplicate-key diagnostics
 
-The formatter preserves Unicode, but writing a valid Unicode document to an ASCII-only stdout currently exits with an encoding error. UTF-8 mode is already documented as the default workaround. An explicit `json --ascii` option would let users produce portable JSON escapes when the downstream destination requires ASCII, while preserving the decoded data.
+Verified with input `{"line\nbreak":1,"line\nbreak":2}`: the duplicate key is decoded before being inserted directly into the diagnostic, so its newline splits the error across lines. Quoting and escaping the key would make unusual keys unambiguous in terminals and logs. This is a diagnostic readability task; it does not change duplicate-key detection.
 
-Acceptance criteria: opt-in only; preserve default Unicode output; round-trip non-ASCII keys/values and supplementary characters; retain duplicate-key, constant, overflow and BOM validation; define interaction with `--check`; test an ASCII-only stdout and file/stdin parity. This is a usability feature, not a claim that the documented current encoding behavior is incorrect.
+Acceptance criteria: keep exit code 1 and no stdout; render keys unambiguously on one diagnostic line using escaped control characters; cover newline, tab, quote, backslash and non-ASCII keys under restricted stderr encodings; preserve the original decoded key for duplicate comparison and test both formatting/check modes. Check existing issues before implementation.
+
+## Delivered: opt-in ASCII JSON output
+
+[#15](https://github.com/ShashithAdithyaWijerathne/developer-toolkit/issues/15): `json --ascii` emits Unicode escapes for restricted destinations while preserving default Unicode output, decoded data, strict validation, sorting and silent check mode. Includes ASCII-stdout and file/stdin regression tests.
 
 ## Delivered: streaming checksum input
 
