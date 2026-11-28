@@ -20,11 +20,11 @@ def reject_duplicate_keys(pairs):
     return result
 
 
-def format_json(text, sort_keys=False):
+def format_json(text, sort_keys=False, *, ensure_ascii=False):
     """Validate strict JSON and return its formatted representation."""
     value = json.loads(text, parse_constant=reject_constant,
                        object_pairs_hook=reject_duplicate_keys)
-    return json.dumps(value, ensure_ascii=False, indent=2,
+    return json.dumps(value, ensure_ascii=ensure_ascii, indent=2,
                       sort_keys=sort_keys, allow_nan=False) + "\n"
 
 
@@ -67,6 +67,8 @@ def main(argv=None):
     json_command.add_argument("file", nargs="?", default="-",
                               help="UTF-8 JSON file, or - for stdin")
     json_command.add_argument("--sort-keys", action="store_true")
+    json_command.add_argument("--ascii", dest="ascii_output", action="store_true",
+                              help="Escape non-ASCII characters in JSON output")
     json_command.add_argument("--check", action="store_true",
                               help="Validate JSON without writing formatted output")
     hash_command = commands.add_parser("sha256", help="Calculate a file checksum")
@@ -79,7 +81,8 @@ def main(argv=None):
         if args.command == "json":
             text = (read_json_stdin() if args.file == "-"
                     else Path(args.file).read_text(encoding="utf-8-sig"))
-            output = format_json(text, sort_keys=args.sort_keys)
+            output = format_json(text, sort_keys=args.sort_keys,
+                                 ensure_ascii=args.ascii_output)
             if not args.check:
                 sys.stdout.write(output)
         else:

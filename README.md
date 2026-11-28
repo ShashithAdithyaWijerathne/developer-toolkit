@@ -36,6 +36,19 @@ python toolkit.py json payload.json > formatted.json
 
 JSON files are decoded as UTF-8, with an optional byte-order mark. Byte input from standard input is also decoded strictly as UTF-8, independently of the system's standard-stream encoding, and accepts one leading byte-order mark. Piping the same UTF-8 file therefore produces the same result as passing its path. Invalid UTF-8 is rejected before any formatted output is written. BOM characters inside JSON string values are preserved. Duplicate object keys, NaN, Infinity, malformed JSON and numbers that overflow the supported float representation are rejected. Unicode text is preserved. Output uses Python's configured stdout encoding; use UTF-8 mode (`python -X utf8 toolkit.py json payload.json`) when the destination must contain UTF-8 bytes. For exact decimal arithmetic, use an application-specific decimal parser; this formatter uses Python's standard JSON number handling.
 
+### Produce ASCII-escaped JSON
+
+Use `--ascii` when the destination requires ASCII JSON text:
+
+```sh
+python toolkit.py json payload.json --ascii
+python toolkit.py json - --ascii --sort-keys
+```
+
+Non-ASCII keys and values are emitted as JSON Unicode escapes, including surrogate pairs for supplementary characters such as emoji. Parsing the result restores the same data; default output still preserves Unicode characters directly. For example, the JSON string `"café"` becomes `"caf\u00e9"` with `--ascii`.
+
+This option controls JSON escaping, not input decoding or Python's stdout codec. Input must still be UTF-8, with the same optional BOM and strict validation rules. An ASCII-configured stdout can encode the escaped text; choosing a different output codec remains the caller's responsibility. Source files are not modified. `--ascii` can be combined with `--sort-keys` and `--check`; check mode remains silent. Python callers can use `format_json(text, ensure_ascii=True)` for the same escaping behavior.
+
 ### Validate JSON without output
 
 Use `--check` in scripts or CI when you only need a validation result:
@@ -99,6 +112,8 @@ python -m unittest discover -s tests -v
 Coverage includes malformed JSON, duplicate keys, Unicode, optional sorting, BOM input, legacy standard-stream encodings, invalid encoding, known and multi-chunk checksums, stdin, error exits, quiet imports, checksum matches/mismatches, uppercase digests and malformed expected digests, and silent JSON check-mode success/error behavior.
 
 Checksum stream tests also cover empty and arbitrary binary stdin, file/pipe parity, bounded reads, stream ownership, read failures, text-only stdin rejection and literal dash filenames.
+
+JSON escaping tests cover ASCII-only stdout, Unicode keys/values and emoji round trips, file/stdin BOM parity, sorting, unchanged Unicode defaults, check-mode silence and strict error handling.
 
 ## Continuous integration
 
